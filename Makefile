@@ -9,7 +9,8 @@ SOURCES = \
 	src/latency.cpp \
 	src/packet_loss.cpp \
 	src/jitter.cpp \
-	src/network_status.cpp
+	src/network_status.cpp \
+	src/reset.cpp
 
 all:
 	$(CXX) $(CXXFLAGS) $(SOURCES) -o $(TARGET)

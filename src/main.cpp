@@ -1,38 +1,16 @@
 #include <iostream>
-#include <cstdlib>
-#include <string>
+#include <limits>
 
 #include "network_interface.h"
 #include "latency.h"
 #include "packet_loss.h"
 #include "jitter.h"
 #include "network_status.h"
-
-// Reset network configuration
-void resetNetwork() {
-    std::string interfaceName;
-
-    std::cout << "\nEnter network interface to reset: ";
-    std::cin >> interfaceName;
-
-    std::string command =
-        "sudo tc qdisc del dev " +
-        interfaceName +
-        " root";
-
-    int result = system(command.c_str());
-
-    if (result == 0) {
-        std::cout << "\nNetwork configuration reset successfully for "
-                  << interfaceName << ".\n";
-    } else {
-        std::cout << "\nReset failed or no custom configuration exists.\n";
-    }
-}
+#include "reset.h"
 
 int main() {
 
-    int choice;
+    int choice = 0;
 
     do {
         std::cout << "\n================================\n";
@@ -48,13 +26,16 @@ int main() {
         std::cout << "7. Exit\n";
 
         std::cout << "\nEnter your choice: ";
-        std::cin >> choice;
 
-        if (std::cin.fail()) {
-            std::cin.clear();
-            std::cin.ignore(10000, '\n');
-
+        if (!(std::cin >> choice)) {
             std::cout << "\nInvalid input. Enter a number from 1 to 7.\n";
+
+            std::cin.clear();
+            std::cin.ignore(
+                std::numeric_limits<std::streamsize>::max(),
+                '\n'
+            );
+
             continue;
         }
 
@@ -89,7 +70,8 @@ int main() {
                 break;
 
             default:
-                std::cout << "\nInvalid choice. Please try again.\n";
+                std::cout << "\nInvalid choice. Please enter a number from 1 to 7.\n";
+                break;
         }
 
     } while (choice != 7);
