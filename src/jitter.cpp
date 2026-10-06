@@ -3,7 +3,7 @@
 #include <string>
 #include "jitter.h"
 
-void setJitter() {
+void setJitter() { 
     std::string interfaceName;
     int delay;
     int jitter;
