@@ -2,3 +2,9 @@ chaos
 *.o
 *.out
 .vscode/
+# Python virtual environment
+web/backend/venv/
+
+# Python cache
+__pycache__/
+*.pyc
