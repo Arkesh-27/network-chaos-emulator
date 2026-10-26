@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -25,6 +24,9 @@ class NetworkConfig(BaseModel):
     latency: int = Field(default=0, ge=0, le=500)
     packet_loss: float = Field(default=0, ge=0, le=100)
     jitter: int = Field(default=0, ge=0, le=100)
+
+
+HELPER = "/usr/local/sbin/network-chaos-netem"
 
 
 def validate_interface(interface: str) -> str:
@@ -88,7 +90,7 @@ def get_status(interface: str):
     validate_interface(interface)
 
     result = subprocess.run(
-        ["tc", "qdisc", "show", "dev", interface],
+        [HELPER, "status", interface],
         capture_output=True,
         text=True,
         timeout=5,
@@ -110,12 +112,91 @@ def get_status(interface: str):
 def apply_network_config(config: NetworkConfig):
     validate_interface(config.interface)
 
-    # Validation is ready, but applying changes is intentionally disabled
-    # until a restricted, non-interactive authorization mechanism is set up.
-    raise HTTPException(
-        status_code=501,
-        detail=(
-            "Network changes are not enabled yet. "
-            "Configure restricted authorization for tc before applying settings."
-        ),
+    # The privileged helper currently allows only eth0.
+    if config.interface != "eth0":
+        raise HTTPException(
+            status_code=400,
+            detail="Only eth0 is currently supported for network emulation",
+        )
+
+    result = subprocess.run(
+        [
+            "sudo",
+            "-n",
+            HELPER,
+            "apply",
+            config.interface,
+            str(config.latency),
+            str(config.packet_loss),
+            str(config.jitter),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or "Failed to apply network configuration"
+
+        if "interactive authentication" in detail.lower():
+            detail = (
+                "Privileged network authorization is not configured yet. "
+                "Configure restricted sudo access for the NetEm helper."
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail=detail,
+        )
+
+    return {
+        "message": "Network configuration applied successfully",
+        "interface": config.interface,
+        "latency": config.latency,
+        "packet_loss": config.packet_loss,
+        "jitter": config.jitter,
+        "output": result.stdout.strip(),
+    }
+
+
+@app.post("/reset")
+def reset_network(interface: str = "eth0"):
+    validate_interface(interface)
+
+    if interface != "eth0":
+        raise HTTPException(
+            status_code=400,
+            detail="Only eth0 is currently supported for network emulation",
+        )
+
+    result = subprocess.run(
+        [
+            "sudo",
+            "-n",
+            HELPER,
+            "reset",
+            interface,
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or "Failed to reset network configuration"
+
+        if "interactive authentication" in detail.lower():
+            detail = (
+                "Privileged network authorization is not configured yet. "
+                "Configure restricted sudo access for the NetEm helper."
+            )
+
+        raise HTTPException(
+            status_code=500,
+            detail=detail,
+        )
+
+    return {
+        "message": "Network configuration reset successfully",
+        "interface": interface,
+    }
